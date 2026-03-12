@@ -1,84 +1,88 @@
 ﻿#include "moving_window.h"
 #include <stdexcept>
 
-std::wstring const moving_window::s_class_name{ L"window" }; //nazwa okna
+std::wstring const moving_window::s_class_name{ L"moving_window_class" };
 
 bool moving_window::register_class() {
-	WNDCLASSEXW desc{}; // struktura opisujaca klase okna
-	if (GetClassInfoExW(m_instance, s_class_name.c_str(), &desc) != 0) return true; //jesli juz istnieje 
-	desc = { 
-	.cbSize = sizeof(WNDCLASSEXW), //rozmiar struktury
+	WNDCLASSEXW desc{};
+	if (GetClassInfoExW(m_instance, s_class_name.c_str(), &desc) != 0) return true;
+	desc = {
+	.cbSize = sizeof(WNDCLASSEXW),
 	.lpfnWndProc = window_proc_static,
 	.hInstance = m_instance,
-	.hCursor = LoadCursorW(nullptr, IDC_ARROW), //zwykła strzałka
-	.lpszClassName = s_class_name.c_str() //ustawiamy nazwe klasy okna
+	.hCursor = LoadCursorW(nullptr, IDC_ARROW),
+	.hbrBackground = m_field_brush, //przypisujemy pedzel do klasy okna
+	.lpszClassName = s_class_name.c_str()
 	};
 	return RegisterClassExW(&desc) != 0;
 }
 
 HWND moving_window::create_window()
 {
+	RECT rect{ 0, 0, 800, 600 }; //left = 0, top = 0, right = 800, bottom = 600 -> obszar 800x600
+	DWORD style = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_BORDER | WS_MINIMIZEBOX; //WS_CAPTION okno mozna przesuwac, WS_CAPTION dodaje pask tytulu przez co mozna chwycic okno i przesunac, WS_BORDER ramka, WS_MINIMIZEBOX dodaje przycosl - na pasku tytulu
+	AdjustWindowRect(&rect, style, FALSE); //okno ma border i title bar wiec ta funkcja mowi policz jaki musi być rozmiar całego okna, żeby środek miał 800×600
+	//przwdziwy rozmiar:
+	int width = rect.right - rect.left; //calkowita szerokosc 
+	int height = rect.bottom - rect.top; //calkowita wysokosc
 	return CreateWindowExW(
-		0, //brak rozszerzonych stylow
-		s_class_name.c_str(), //nazwa klasy okna
-		L"window", //tytul okna
-		WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | //zwykłe okno najwyższego poziomu, ma menu systemowe, ma pasek tytulu
-		WS_BORDER | WS_MINIMIZEBOX, //ma ramke, ma przycisk minimalizacji
-		//WS_THICKFRAME - mozna rozciagac
-		CW_USEDEFAULT, 0, 
-		CW_USEDEFAULT, 0, 
-		nullptr, //nie ma okna nadrzednego
-		nullptr, //nie ma menu
+		0,
+		s_class_name.c_str(),
+		L"poor man's snake", //nazwa okna
+		style,
+		CW_USEDEFAULT, CW_USEDEFAULT, //x, y
+		width, height, //szrerokosc, wysokosc
+		nullptr,
+		nullptr,
 		m_instance,
-		this); //wskaznik do obiektu moving_window
+		this);
 }
 
-LRESULT moving_window::window_proc_static(HWND window, UINT message, WPARAM wparam, LPARAM lparam){
+LRESULT moving_window::window_proc_static(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	moving_window* app = nullptr;
-	if (message == WM_NCCREATE) //komunikat podczas tworzenia okna
+	if (message == WM_NCCREATE)
 	{
 		auto p = reinterpret_cast<LPCREATESTRUCTW>(lparam);
 		app = static_cast<moving_window*>(p->lpCreateParams);
-		SetWindowLongPtrW(window, GWLP_USERDATA,
-			reinterpret_cast<LONG_PTR>(app));
+		SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
 	}
-	else //proba odzyskania wskaznika do obiektu
+	else
 	{
 		app = reinterpret_cast<moving_window*>(GetWindowLongPtrW(window, GWLP_USERDATA));
 	}
-	if (app != nullptr) //jelsi udalo sie znalezc obiekt to przekazujemy komunikat do zwyklej metody
+	if (app != nullptr)
 	{
 		return app->window_proc(window, message, wparam, lparam);
 	}
 	return DefWindowProcW(window, message, wparam, lparam);
 }
 
-LRESULT moving_window::window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam){
+LRESULT moving_window::window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
 	switch (message) {
-	case WM_CLOSE: //zamkniecie okna
+	case WM_CLOSE:
 		DestroyWindow(window);
 		return 0;
-	case WM_DESTROY: //okno zostalo zniszczone
+	case WM_DESTROY:
 		if (window == m_main)
 			PostQuitMessage(EXIT_SUCCESS);
 		return 0;
-	}//domyslna obsluga windowska
+	}
 	return DefWindowProcW(window, message, wparam, lparam);
 }
-
-moving_window::moving_window(HINSTANCE instance) : m_instance{ instance }, m_main{}{
+//w konstruktorze pedzel do malowania
+moving_window::moving_window(HINSTANCE instance) : m_instance{ instance }, m_main{}, m_field_brush{ CreateSolidBrush(RGB(50, 60, 70))} {
 	register_class();
 	m_main = create_window();
 }
 
 int moving_window::run(int show_command)
 {
-	ShowWindow(m_main, show_command); //pokazuje okno na ekaznie
-	MSG msg{}; //struktura do komunikatow
-	BOOL result = TRUE; //zmienna do przechowywania GetMessageW
-	while ((result = GetMessageW(&msg, nullptr, 0, 0)) != 0) 
+	ShowWindow(m_main, show_command);
+	MSG msg{};
+	BOOL result = TRUE;
+	while ((result = GetMessageW(&msg, nullptr, 0, 0)) != 0)
 	{
-		if (result == -1) return EXIT_FAILURE; 
+		if (result == -1) return EXIT_FAILURE;
 		TranslateMessage(&msg);
 		DispatchMessageW(&msg);
 	}
