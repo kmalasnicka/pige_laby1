@@ -15,6 +15,12 @@ private:
 	HWND m_square; //uchwyt do okna malego kwadratu 100x100
 	HBRUSH m_square_brush; //brush kwadratu
 	HBRUSH m_field_brush;
+	//pozycje kwadratu 
+	int m_square_x; 
+	int m_square_y;
+	//o ile sie przesuwamy
+	int m_dx;
+	int m_dy;
 public:
 	moving_window(HINSTANCE instance);
 	int run(int show_command);
