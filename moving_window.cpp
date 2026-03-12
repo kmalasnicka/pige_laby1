@@ -98,17 +98,62 @@ LRESULT moving_window::window_proc(HWND window, UINT message, WPARAM wparam, LPA
 		return reinterpret_cast<INT_PTR>(m_field_brush); //w pozostalych przypadkach brush tla 
 	}
 	case WM_TIMER:
+	{
+		RECT client{};
+		GetClientRect(m_main, &client);
+		int square_size = 100;
 		m_square_x += m_dx;
 		m_square_y += m_dy;
+		if (m_square_x <= 0) { //jesli dojdzie do lewej krawedzi zmieniamy kierunek na prawo
+			m_square_x = 0;
+			m_dx = 3;
+		}
+		else if (m_square_x + square_size >= client.right) { //jesli dojdziemy do prawej sciany (m_square_x + 100) ustawiamy square przy prawej granicy i zmieniamy kierunek na lewo
+			m_square_x = client.right - square_size;
+			m_dx = -3;
+		}
+		if (m_square_y <= 0) { 
+			m_square_y = 0;
+			m_dy = 3;
+		}
+		else if (m_square_y + square_size >= client.bottom) {
+			m_square_y = client.bottom - square_size;
+			m_dy = -3;
+		}
 		SetWindowPos(
 			m_square,
 			nullptr,
 			m_square_x,
 			m_square_y,
-			100,
-			100,
+			square_size,
+			square_size,
 			SWP_NOZORDER
 		);
+		return 0;
+	}
+	case WM_KEYDOWN:
+		switch (wparam) {
+		case VK_LEFT:
+		case 'A':
+			m_dx = -3;
+			m_dy = 0;
+			return 0;
+		case VK_RIGHT:
+		case 'D':
+			m_dx = 3;
+			m_dy = 0;
+			return 0;
+		case VK_UP:
+		case 'W':
+			m_dx = 0;
+			m_dy = -3;
+			return 0;
+		case VK_DOWN:
+		case 'S':
+			m_dx = 0;
+			m_dy = 3;
+			return 0;
+		}
 		return 0;
 	}
 	return DefWindowProcW(window, message, wparam, lparam);
