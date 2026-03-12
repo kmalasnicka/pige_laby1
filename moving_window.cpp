@@ -45,16 +45,15 @@ void moving_window::create_square() { //funkcja tworzaca kwadrat
 	GetClientRect(m_main, &client);
 	int square_size = 100; //bok kwadratu to 100 pikseli 
 	//wspolrzedne lewego gornego rogu tak zeby square byl na srodku 
-	//zapisujemy globalnie x i y
-	m_square_x = (client.right - square_size) / 2; 
-	m_square_y = (client.bottom - square_size) / 2;
+	int x = (client.right - square_size) / 2; 
+	int y = (client.bottom - square_size) / 2;
 
 	m_square = CreateWindowExW(
 		0, 
 		L"STATIC",
 		nullptr,
 		WS_CHILD | WS_VISIBLE, //dziecko glownego okna, ma byc widoczne od raazu
-		m_square_x, m_square_y,
+		x, y,
 		square_size, square_size,
 		m_main, //parent
 		nullptr,
@@ -88,29 +87,13 @@ LRESULT moving_window::window_proc(HWND window, UINT message, WPARAM wparam, LPA
 		DestroyWindow(window);
 		return 0;
 	case WM_DESTROY:
-		KillTimer(m_main, 1);
 		if (window == m_main)
 			PostQuitMessage(EXIT_SUCCESS);
 		return 0; 
 	case WM_CTLCOLORSTATIC: //square jest static windows pyta jakim pedzlem go malowac
-	{
 		HWND control = reinterpret_cast<HWND>(lparam); //uchwyt tej konkretnej kontrolki static ktorej windows chce kolor
 		if (control == m_square) return reinterpret_cast<INT_PTR>(m_square_brush); //jesli kontrolka to square to zwracamy brush square, czyli square dostaje swoj kolor
 		return reinterpret_cast<INT_PTR>(m_field_brush); //w pozostalych przypadkach brush tla 
-	}
-	case WM_TIMER:
-		m_square_x += m_dx; //przesuwamy o 3 piksele w poziomie ruch w lewo
-		m_square_y += m_dy; //nic sie nie dzieje bo m_dy = 0
-		SetWindowPos( //przesuwa square na nowe wspolrzedne 
-			m_square,
-			nullptr,
-			m_square_x,
-			m_square_y,
-			100,
-			100,
-			SWP_NOZORDER
-		);
-		return 0;
 	}
 	return DefWindowProcW(window, message, wparam, lparam);
 }
@@ -120,16 +103,11 @@ moving_window::moving_window(HINSTANCE instance)
 	m_main{}, 
 	m_square{},
 	m_field_brush{ CreateSolidBrush(RGB(50, 60, 70))},
-	m_square_brush{ CreateSolidBrush(RGB(220, 40, 40))},
-	m_square_x{},
-	m_square_y{},
-	m_dx{-3},
-	m_dy{0}
+	m_square_brush{ CreateSolidBrush(RGB(220, 40, 40))}
 {
 	register_class();
 	m_main = create_window();
 	create_square();
-	SetTimer(m_main, 1, 20, nullptr); //co 20 ms program dostaje sygnal
 }
 
 int moving_window::run(int show_command)
