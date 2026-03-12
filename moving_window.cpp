@@ -1,5 +1,7 @@
 ﻿#include "moving_window.h"
 #include <stdexcept>
+#include <random>
+#include <ctime>
 
 std::wstring const moving_window::s_class_name{ L"moving_window_class" };
 
@@ -153,6 +155,11 @@ LRESULT moving_window::window_proc(HWND window, UINT message, WPARAM wparam, LPA
 			m_dx = 0;
 			m_dy = 3;
 			return 0;
+		case VK_SPACE:
+
+			m_color_index = (m_color_index + 1) % 16; //przechodzi do nastepnego koloru i robi zapetlenie
+			update_square_color();
+			return 0;
 		}
 		return 0;
 	}
@@ -163,13 +170,16 @@ moving_window::moving_window(HINSTANCE instance)
 	: m_instance{ instance },
 	m_main{},
 	m_square{},
-	m_field_brush{ CreateSolidBrush(RGB(50, 60, 70)) },
-	m_square_brush{ CreateSolidBrush(RGB(220, 40, 40)) },
 	m_square_x{},
 	m_square_y{},
 	m_dx{ -3 },
-	m_dy{0}
+	m_dy{ 0 },
+	m_field_brush{ CreateSolidBrush(RGB(50, 60, 70)) },
+	m_square_brush{ CreateSolidBrush(RGB(0, 0, 0)) }, //cos standardowego kolor czarny
+	m_color_index{0}
 {
+	generate_colors();
+	update_square_color();
 	register_class();
 	m_main = create_window();
 	create_square();
@@ -188,4 +198,18 @@ int moving_window::run(int show_command)
 		DispatchMessageW(&msg);
 	}
 	return EXIT_SUCCESS;
+}
+
+void moving_window::generate_colors() {
+	std::mt19937 rng(static_cast<unsigned int>(std::time(nullptr))); //generator liczb losowych
+	std::uniform_int_distribution<int> dist(0, 255); //liczby 0-255 
+	for (int i = 0; i < 16; i++) {
+		m_colors[i] = RGB(dist(rng), dist(rng), dist(rng)); //robimy z tego kolory i zapisujemy 16 kolorow
+	}
+}
+
+void moving_window::update_square_color() {
+	DeleteObject(m_square_brush); //usuwamy stary brush
+	m_square_brush = CreateSolidBrush(m_colors[m_color_index]); //tworzymy nowy brush z aktualnego koloru
+	InvalidateRect(m_square, nullptr, TRUE); //odswiezamy square
 }
