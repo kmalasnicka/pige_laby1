@@ -9,8 +9,11 @@ private:
 	static LRESULT CALLBACK window_proc_static(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
 	LRESULT window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
 	HWND create_window(); 
+	void create_square(); //funkcja tworzaca kwadrat w srodku oknie 
 	HINSTANCE m_instance; 
 	HWND m_main; 
+	HWND m_square; //uchwyt do okna malego kwadratu 100x100
+	HBRUSH m_square_brush; //brush kwadratu
 	HBRUSH m_field_brush;
 public:
 	moving_window(HINSTANCE instance);

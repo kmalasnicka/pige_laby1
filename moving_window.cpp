@@ -20,7 +20,8 @@ bool moving_window::register_class() {
 HWND moving_window::create_window()
 {
 	RECT rect{ 0, 0, 800, 600 }; //left = 0, top = 0, right = 800, bottom = 600 -> obszar 800x600
-	DWORD style = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_BORDER | WS_MINIMIZEBOX; //WS_CAPTION okno mozna przesuwac, WS_CAPTION dodaje pask tytulu przez co mozna chwycic okno i przesunac, WS_BORDER ramka, WS_MINIMIZEBOX dodaje przycosl - na pasku tytulu
+	//stage 2: WS_CLIPCHILDREN (nie maluj swojego tła na obszarze, gdzie są child windows), sprawia ze kwadra w srodku jest widoczny!
+	DWORD style = WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION | WS_BORDER | WS_MINIMIZEBOX | WS_CLIPCHILDREN; //WS_CAPTION okno mozna przesuwac, WS_CAPTION dodaje pask tytulu przez co mozna chwycic okno i przesunac, WS_BORDER ramka, WS_MINIMIZEBOX dodaje przycosl - na pasku tytulu
 	AdjustWindowRect(&rect, style, FALSE); //okno ma border i title bar wiec ta funkcja mowi policz jaki musi być rozmiar całego okna, żeby środek miał 800×600
 	//przwdziwy rozmiar:
 	int width = rect.right - rect.left; //calkowita szerokosc 
@@ -36,6 +37,29 @@ HWND moving_window::create_window()
 		nullptr,
 		m_instance,
 		this);
+}
+
+void moving_window::create_square() { //funkcja tworzaca kwadrat
+	//rozmiar obszaru klienta głównego okna, czyli wnętrza okna, uwzgledniamy square wzgledem srodka wnetrza a nie wzgledem calej ramki
+	RECT client{};
+	GetClientRect(m_main, &client);
+	int square_size = 100; //bok kwadratu to 100 pikseli 
+	//wspolrzedne lewego gornego rogu tak zeby square byl na srodku 
+	int x = (client.right - square_size) / 2; 
+	int y = (client.bottom - square_size) / 2;
+
+	m_square = CreateWindowExW(
+		0, 
+		L"STATIC",
+		nullptr,
+		WS_CHILD | WS_VISIBLE, //dziecko glownego okna, ma byc widoczne od raazu
+		x, y,
+		square_size, square_size,
+		m_main, //parent
+		nullptr,
+		m_instance,
+		nullptr
+	);
 }
 
 LRESULT moving_window::window_proc_static(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
@@ -65,14 +89,25 @@ LRESULT moving_window::window_proc(HWND window, UINT message, WPARAM wparam, LPA
 	case WM_DESTROY:
 		if (window == m_main)
 			PostQuitMessage(EXIT_SUCCESS);
-		return 0;
+		return 0; 
+	case WM_CTLCOLORSTATIC: //square jest static windows pyta jakim pedzlem go malowac
+		HWND control = reinterpret_cast<HWND>(lparam); //uchwyt tej konkretnej kontrolki static ktorej windows chce kolor
+		if (control == m_square) return reinterpret_cast<INT_PTR>(m_square_brush); //jesli kontrolka to square to zwracamy brush square, czyli square dostaje swoj kolor
+		return reinterpret_cast<INT_PTR>(m_field_brush); //w pozostalych przypadkach brush tla 
 	}
 	return DefWindowProcW(window, message, wparam, lparam);
 }
 //w konstruktorze pedzel do malowania
-moving_window::moving_window(HINSTANCE instance) : m_instance{ instance }, m_main{}, m_field_brush{ CreateSolidBrush(RGB(50, 60, 70))} {
+moving_window::moving_window(HINSTANCE instance) 
+	: m_instance{ instance }, 
+	m_main{}, 
+	m_square{},
+	m_field_brush{ CreateSolidBrush(RGB(50, 60, 70))},
+	m_square_brush{ CreateSolidBrush(RGB(220, 40, 40))}
+{
 	register_class();
 	m_main = create_window();
+	create_square();
 }
 
 int moving_window::run(int show_command)
