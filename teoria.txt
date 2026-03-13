@@ -1,0 +1,98 @@
+SendMessage - działa od razu i czeka na wynik, zrob to teraz
+PostMessage - wrzuca wiadomość do kolejki wiec zostaje obsluzona później, zrob później przez queue
+
+np.: STATIC z napisem i po klikniecu guzika chcemy od razu zmienić tekts
+SendMessageW(hLabel, WM_SETTEXT, 0, (LPARAM)L"Nowy tekst"); //SETTEXT ma być wykonane od razu
+
+np.: po kliknieciu klawisza dodaj zdarzerzenie do obsługi później
+PostMessageW(m_main, WM_APP + 1, 0, 0); // wysylanie sama sobie custom message
+w window_proc:
+case WM_APP + 1:
+    // zrób coś później
+    return 0;
+
+GetMessage - czeka na wiadomość i blokuje program
+PeekMessage - nie czeka, sprawdza czy cos jest w kolejce, nie blokuje
+
+np.: kulka ma się poruszać caly czas ale program nadal ma reagować na klawiaturę i zamykanie okn a
+MSG msg{};
+bool done = false;
+
+while (!done)
+{
+    if (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+    {
+        if (msg.message == WM_QUIT)
+            done = true;
+        else
+        {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
+    else
+    {
+        // tu animacja bez czekania
+        // update pozycji
+    }
+}
+
+Focus - kto dostaje klawiaturę
+active - aktywne okno w danym watku 
+foreground - okno użytkownika "na wierzchu" systemowo
+
+SetFocus(m_main);
+
+Z-order - kolejność okien które jest nad którym
+SetWindowPos - zmienia pozycję, rozmiar i też Z-order
+SetWindowPos(hLabel, HWND_TOP, x, y, w, h, SWP_NOMOVE | SWP_NOSIZE); //okno które zmieniamy, gdzie w kolejności okien przenieś to okno na sama gore z-order, nowa pozycja x, nowe y, szerokość, wysokość, co dokładnie zmieniamy
+SWP_NOMOVE - nie zmieniaj pozycji
+SWP_NOSIZE - nie zmieniaj rozmiaru
+
+klawisz->znak: WM_CHAR
+
+timer: (niedokladny)
+SetTimer(hwnd, id, 1000, nullptr);
+
+overlapped window - normalne okno aplikacji
+popup window - menu, tooltip, dialog
+child window - buton, edit, label - musza mieć parenta
+
+układy wspolrzednych: 
+screen coordinates - wspolrzedne monitora
+client coordinates - wspolrzedne okna
+workspace coordinates - ekran bez taskbara
+konwersja:
+BOOL ScreenToClient(HWND hwnd, LLPOINT lpPoint) - handle to the window whose client area is used, pointer to POINT structure (in/out)
+BOOL ClientToScreen(HWND hwnd, LLPOINT lpPoint)
+
+messages przy zmianie okna
+WM_WINDOWPOSCHANGING
+WM_WINDOWPOSCHANGED
+WM_MOVE
+WM_SIZE
+
+okno które nie jest widocznie i tylko odbiera message:
+CreateWindowEx(..., HWND_MESSAGE)
+przykład:
+static const char* class_name = "DUMMY_CLASS";
+
+WNDCLASSEX wx = {};
+wx.cbSize = sizeof(WNDCLASSEX);
+wx.lpfnWndProc = pWndProc;
+wx.hInstance = current_instance;
+wx.lpszClassName = class_name;
+
+if (RegisterClassEx(&wx)) {
+    CreateWindowEx(
+        0,
+        class_name,
+        "dummy_name",
+        0,
+        0,0,0,0,
+        HWND_MESSAGE,
+        NULL,
+        current_instance,
+        NULL
+    );
+}
